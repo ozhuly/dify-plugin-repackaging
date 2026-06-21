@@ -374,11 +374,20 @@ PY
 	mkdir -p ./wheels
 	mkdir -p ./wheels_temp
 
+	echo "Installing build dependencies..."
+	${PIP_CMD} install --quiet wheel setuptools
+
 	echo "Pre-building wheels for source-only packages (like jieba)..."
-	# Build source packages into .whl files locally first.
-	# We suppress errors here because we only care about pure-python packages succeeding;
-	# the subsequent download step will properly handle the complex C-extensions.
-	${PIP_CMD} wheel -r requirements.txt -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
+	# Process line-by-line so a C-extension compile failure doesn't abort the pure-python builds
+	while IFS= read -r req || [[ -n "$req" ]]; do
+		# Skip empty lines or comments
+		if [[ -z "$req" || "$req" =~ ^[[:space:]]*# ]]; then
+			continue
+		fi
+		# Clean the requirement string and build
+		clean_req=$(echo "$req" | cut -d ';' -f 1 | xargs)
+		${PIP_CMD} wheel "$clean_req" -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
+	done < requirements.txt
 
 	echo "Downloading wheels to ./wheels/..."
 	${PIP_CMD} download ${PIP_PLATFORM} --prefer-binary -r requirements.txt -d ./wheels \
@@ -397,7 +406,7 @@ PY
 
 	# Clean up the temporary build directory
 	rm -rf ./wheels_temp
-
+	
 	# ============================================
 	# Step 4: Update requirements.txt for offline usage
 	# ============================================
