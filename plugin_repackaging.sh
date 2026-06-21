@@ -375,7 +375,8 @@ PY
 	mkdir -p ./wheels_temp
 
 	echo "Installing build dependencies..."
-	${PIP_CMD} install --quiet wheel setuptools
+	# Use 'env -u' to prevent pip from reading the poisoned cross-compilation env vars
+	env -u PIP_PLATFORM ${PIP_CMD} install --quiet wheel setuptools
 
 	echo "Pre-building wheels for source-only packages (like jieba)..."
 	# Process line-by-line so a C-extension compile failure doesn't abort the pure-python builds
@@ -386,7 +387,7 @@ PY
 		fi
 		# Clean the requirement string and build
 		clean_req=$(echo "$req" | cut -d ';' -f 1 | xargs)
-		${PIP_CMD} wheel "$clean_req" -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
+		env -u PIP_PLATFORM ${PIP_CMD} wheel "$clean_req" -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
 	done < requirements.txt
 
 	echo "Downloading wheels to ./wheels/..."
