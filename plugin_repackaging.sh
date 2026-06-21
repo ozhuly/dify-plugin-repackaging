@@ -417,7 +417,22 @@ print_usage() {
 
 while getopts "p:s:R" opt; do
 	case "$opt" in
-		p) RAW_PLATFORM="${OPTARG}"; PIP_PLATFORM="--platform ${OPTARG} --only-binary=:all:" ;;
+		p) 
+			RAW_PLATFORM="${OPTARG}"
+			PIP_PLATFORM="--platform ${OPTARG}"
+			
+			# Inject backward compatibility fallbacks for x86_64 architecture
+			if [[ "${OPTARG}" == *"x86_64"* ]]; then
+				PIP_PLATFORM="${PIP_PLATFORM} --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64"
+			fi
+			
+			# Inject backward compatibility fallbacks for ARM/aarch64 architecture
+			if [[ "${OPTARG}" == *"aarch64"* ]]; then
+				PIP_PLATFORM="${PIP_PLATFORM} --platform manylinux_2_17_aarch64 --platform manylinux2014_aarch64"
+			fi
+			
+			PIP_PLATFORM="${PIP_PLATFORM} --only-binary=:all:"
+			;;
 		s) PACKAGE_SUFFIX="${OPTARG}" ;;
 		R) PRERELEASE_ALLOW=1 ;;
 		*) print_usage; exit 1 ;;
