@@ -123,6 +123,46 @@ _local(){
 	repackage ${PLUGIN_PACKAGE_PATH}
 }
 
+batch(){
+	if [[ -z "$2" ]]; then
+		echo ""
+		echo "Usage: $0 batch [directory path]"
+		echo "Example:"
+		echo "	$0 batch ./plugins"
+		echo ""
+		exit 1
+	fi
+	DIR_PATH=$(realpath "$2")
+	if [[ ! -d "$DIR_PATH" ]]; then
+		echo "✗ Error: Directory not found -> $DIR_PATH"
+		exit 1
+	fi
+
+	echo "=========================================="
+	echo "Batch Processing Directory: $DIR_PATH"
+	echo "=========================================="
+
+	# Enable nullglob so the array is empty if no files match
+	shopt -s nullglob
+	local FOUND_PKGS=("$DIR_PATH"/*.difypkg)
+	
+	if [ ${#FOUND_PKGS[@]} -eq 0 ]; then
+		echo "✗ No .difypkg files found in $DIR_PATH"
+		exit 1
+	fi
+
+	for pkg in "${FOUND_PKGS[@]}"; do
+		# Skip files that are already repackaged (e.g., *-offline.difypkg)
+		if [[ "$pkg" == *"-${PACKAGE_SUFFIX}.difypkg" ]]; then
+			continue
+		fi
+		
+		echo ""
+		echo ">>> Starting batch item: $(basename "$pkg")"
+		repackage "$pkg"
+	done
+}
+
 repackage(){
 	local PACKAGE_PATH=$1
 	PACKAGE_NAME_WITH_EXTENSION=`basename ${PACKAGE_PATH}`
@@ -406,6 +446,7 @@ install_unzip(){
 }
 
 print_usage() {
+	echo "usage: $0 [-p platform] [-s package_suffix] [-R] {market|github|local|batch}"
 	echo "usage: $0 [-p platform] [-s package_suffix] [-R] {market|github|local}"
 	echo "-p platform: python packages' platform. Using for crossing repacking.
         For example: -p manylinux2014_x86_64 or -p manylinux2014_aarch64"
@@ -452,8 +493,10 @@ case "$1" in
 	'local')
 	_local $@
 	;;
+	'batch')
+	batch $@
+	;;
 	*)
-
 print_usage
 exit 1
 esac
