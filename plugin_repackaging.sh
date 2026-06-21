@@ -373,25 +373,48 @@ PY
 
 	mkdir -p ./wheels
 	mkdir -p ./wheels_temp
+	mkdir -p ./wheels_check
 
 	echo "Installing build dependencies..."
 	# Use 'env -u' to prevent pip from reading the poisoned cross-compilation env vars
 	env -u PIP_PLATFORM ${PIP_CMD} install --quiet wheel setuptools
 
-	echo "Pre-building wheels for source-only packages (like jieba)..."
-	# Process line-by-line so a C-extension compile failure doesn't abort the pure-python builds
+	echo "Checking packages to build ONLY what is necessary..."
 	while IFS= read -r req || [[ -n "$req" ]]; do
 		# Skip empty lines or comments
 		if [[ -z "$req" || "$req" =~ ^[[:space:]]*# ]]; then
 			continue
 		fi
-		# Clean the requirement string and build
+		
+		# Extract just the package name/version for testing (remove environment markers and Git URLs)
 		clean_req=$(echo "$req" | cut -d ';' -f 1 | xargs)
-		env -u PIP_PLATFORM ${PIP_CMD} wheel "$clean_req" -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
+		pkg_name_only=$(echo "$clean_req" | sed 's/ @ .*//')
+
+		# Test if PyPI has a strictly compatible binary wheel for this specific package
+		# --no-deps makes this check incredibly fast and prevents cross-contamination
+		if ${PIP_CMD} download ${PIP_PLATFORM} --no-deps -d ./wheels_check "$pkg_name_only" > /dev/null 2>&1; then
+			echo "  ✓ Pre-compiled binary found: $pkg_name_only"
+		else
+			echo "  ! Source/Git detected. Building: $pkg_name_only"
+			# Build just this package from source, WITHOUT dependencies
+			# We use the original $req so it clones Git repos properly
+			env -u PIP_PLATFORM ${PIP_CMD} wheel "$req" --no-deps -w ./wheels_temp > /dev/null 2>&1
+		fi
 	done < requirements.txt
 
-	echo "Downloading wheels to ./wheels/..."
-	${PIP_CMD} download ${PIP_PLATFORM} --prefer-binary -r requirements.txt -d ./wheels \
+	# Clean up the dummy check directory
+	rm -rf ./wheels_check
+
+	# Strip direct Git/URL references so pip is forced to use the wheels we just built
+	echo "Stripping direct Git/URL references to force local wheel resolution..."
+	if [[ "darwin" == "$OS_TYPE" ]]; then
+		sed -i ".bak" 's/ @ [^;]*//g' requirements.txt && rm -f requirements.txt.bak
+	else
+		sed -i 's/ @ [^;]*//g' requirements.txt
+	fi
+
+	echo "Downloading final dependencies to ./wheels/..."
+	${PIP_CMD} download ${PIP_PLATFORM} -r requirements.txt -d ./wheels \
 		--index-url ${PIP_MIRROR_URL} --trusted-host mirrors.aliyun.com \
 		--find-links ./wheels_temp
 	
