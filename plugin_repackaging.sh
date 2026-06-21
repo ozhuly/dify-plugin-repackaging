@@ -372,17 +372,31 @@ PY
 	[ -n "$PIP_PLATFORM" ] && echo "Platform: ${RAW_PLATFORM}"
 
 	mkdir -p ./wheels
+	mkdir -p ./wheels_temp
+
+	echo "Pre-building wheels for source-only packages (like jieba)..."
+	# Build source packages into .whl files locally first.
+	# We suppress errors here because we only care about pure-python packages succeeding;
+	# the subsequent download step will properly handle the complex C-extensions.
+	${PIP_CMD} wheel -r requirements.txt -w ./wheels_temp --prefer-binary > /dev/null 2>&1 || true
+
 	echo "Downloading wheels to ./wheels/..."
 	${PIP_CMD} download ${PIP_PLATFORM} --prefer-binary -r requirements.txt -d ./wheels \
-		--index-url ${PIP_MIRROR_URL} --trusted-host mirrors.aliyun.com
+		--index-url ${PIP_MIRROR_URL} --trusted-host mirrors.aliyun.com \
+		--find-links ./wheels_temp
+	
 	if [[ $? -ne 0 ]]; then
 		echo "✗ Error: Failed to download dependencies"
+		rm -rf ./wheels_temp
 		exit 1
 	fi
 
 	# Count downloaded wheels
 	WHEEL_COUNT=$(ls -1 ./wheels/*.whl 2>/dev/null | wc -l)
 	echo "✓ Downloaded $WHEEL_COUNT wheel packages"
+
+	# Clean up the temporary build directory
+	rm -rf ./wheels_temp
 
 	# ============================================
 	# Step 4: Update requirements.txt for offline usage
