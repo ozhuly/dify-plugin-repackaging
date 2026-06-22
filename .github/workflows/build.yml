@@ -4,9 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       plugins_directory:
-        description: "Directory containing .difypkg files (use . for repository root)"
+        description: "Directory containing .difypkg files (use . for repository root) or Github Repo"
         required: true
         default: "."
+        type: string
+      version:
+        description: "Release title or version (e.g., v0.0.2)"
+        required: true
+        type: string
+      file:
+        description: "Assets name (include .difypkg suffix)"
+        required: true
         type: string
       platform_arm:
         description: "Use ARM platform (true = manylinux_2_17_aarch64, false = manylinux_2_17_x86_64)"
@@ -20,6 +28,8 @@ jobs:
       - name: Print workflow inputs
         run: |
           echo "plugins_directory = ${{ inputs.plugins_directory }}"
+          echo "version           = ${{ inputs.version }}"
+          echo "file              = ${{ inputs.file }}"
           echo "platform_arm      = ${{ inputs.platform_arm }}"
 
       - name: Resolve platform
@@ -49,8 +59,10 @@ jobs:
           ./plugin_repackaging.sh \
           -p ${{ env.PIP_PLATFORM }} \
           -s ${{ env.PACKAGE_SUFFIX }} \
-          batch \
-          "${{ inputs.plugins_directory }}"
+          github \
+          "${{ inputs.plugins_directory }}" \
+          "${{ inputs.version }}" \
+          "${{ inputs.file }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
