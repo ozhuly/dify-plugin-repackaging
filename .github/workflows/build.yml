@@ -59,7 +59,7 @@ jobs:
           ./plugin_repackaging.sh \
           -p ${{ env.PIP_PLATFORM }} \
           -s ${{ env.PACKAGE_SUFFIX }} \
-          github \
+          local \
           "${{ inputs.plugins_directory }}" \
           "${{ inputs.version }}" \
           "${{ inputs.file }}"
