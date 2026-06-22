@@ -1,11 +1,12 @@
 #!/bin/bash
 # author: Junjie.M
 
-DEFAULT_GITHUB_API_URL=https://github.com
+DEFAULT_GITHUB_WEB_URL=https://github.com
 DEFAULT_MARKETPLACE_API_URL=https://marketplace.dify.ai
 DEFAULT_PIP_MIRROR_URL=https://mirrors.aliyun.com/pypi/simple
 
-GITHUB_API_URL="${GITHUB_API_URL:-$DEFAULT_GITHUB_API_URL}"
+# Rename the variable so GitHub Actions doesn't overwrite it
+GITHUB_WEB_URL="${GITHUB_WEB_URL:-$DEFAULT_GITHUB_WEB_URL}"
 MARKETPLACE_API_URL="${MARKETPLACE_API_URL:-$DEFAULT_MARKETPLACE_API_URL}"
 PIP_MIRROR_URL="${PIP_MIRROR_URL:-$DEFAULT_PIP_MIRROR_URL}"
 
@@ -77,8 +78,8 @@ github(){
 		exit 1
 	fi
 	GITHUB_REPO=$2
-	if [[ "${GITHUB_REPO}" != "${GITHUB_API_URL}"* ]]; then
-		GITHUB_REPO="${GITHUB_API_URL}/${GITHUB_REPO}"
+	if [[ "${GITHUB_REPO}" != "${GITHUB_WEB_URL}"* ]]; then
+		GITHUB_REPO="${GITHUB_WEB_URL}/${GITHUB_REPO}"
 	fi
 	RELEASE_TITLE=$3
 	ASSETS_NAME=$4
